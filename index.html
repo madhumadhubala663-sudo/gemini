@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EduGenie — AI Learning Assistant</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI', Arial, sans-serif; }
+  body { background:#f4f6fb; min-height:100vh; display:flex; flex-direction:column; }
+  header { background:#4f46e5; color:#fff; padding:18px; text-align:center; }
+  header h1 { font-size:1.5rem; }
+  header p { font-size:.85rem; opacity:.85; }
+  .subject-bar { display:flex; justify-content:center; gap:8px; padding:12px;
+                 background:#fff; border-bottom:1px solid #e5e7eb; flex-wrap:wrap; }
+  .subject-bar button { padding:6px 14px; border:1px solid #d1d5db; background:#fff;
+                        border-radius:20px; cursor:pointer; font-size:.85rem; }
+  .subject-bar button.active { background:#4f46e5; color:#fff; border-color:#4f46e5; }
+  #chat { flex:1; max-width:720px; width:100%; margin:0 auto; padding:20px;
+          overflow-y:auto; display:flex; flex-direction:column; gap:12px; }
+  .msg { max-width:80%; padding:12px 16px; border-radius:14px; line-height:1.5; white-space:pre-wrap; }
+  .user { align-self:flex-end; background:#4f46e5; color:#fff; border-bottom-right-radius:4px; }
+  .bot  { align-self:flex-start; background:#fff; border:1px solid #e5e7eb; border-bottom-left-radius:4px; }
+  .typing { align-self:flex-start; color:#6b7280; font-style:italic; }
+  form { display:flex; gap:8px; padding:12px; background:#fff; border-top:1px solid #e5e7eb; }
+  input { flex:1; padding:12px 16px; border:1px solid #d1d5db; border-radius:24px; font-size:1rem; outline:none; }
+  input:focus { border-color:#4f46e5; }
+  .send { padding:12px 22px; background:#4f46e5; color:#fff; border:none; border-radius:24px; cursor:pointer; }
+  .send:disabled { opacity:.6; cursor:not-allowed; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🧞 EduGenie</h1>
+  <p>Your Gemini-Powered Learning Assistant</p>
+</header>
+
+<div class="subject-bar" id="subjectBar">
+  <button class="active" data-s="General">General</button>
+  <button data-s="Math">Math</button>
+  <button data-s="Science">Science</button>
+  <button data-s="History">History</button>
+  <button data-s="English">English</button>
+  <button data-s="Coding">Coding</button>
+</div>
+
+<div id="chat">
+  <div class="msg bot">Hi! I'm EduGenie 🧞 Ask me anything about your studies!</div>
+</div>
+
+<form id="askForm">
+  <input type="text" id="question" placeholder="Type your question..." autocomplete="off" required>
+  <button type="submit" class="send">Ask</button>
+</form>
+
+<script>
+  let subject = "General";
+  const chat = document.getElementById("chat");
+  const form = document.getElementById("askForm");
+  const input = document.getElementById("question");
+  const sendBtn = form.querySelector(".send");
+
+  // Subject selection
+  document.getElementById("subjectBar").addEventListener("click", e => {
+    if (e.target.tagName !== "BUTTON") return;
+    document.querySelectorAll(".subject-bar button").forEach(b => b.classList.remove("active"));
+    e.target.classList.add("active");
+    subject = e.target.dataset.s;
+  });
+
+  function addMsg(text, cls) {
+    const div = document.createElement("div");
+    div.className = "msg " + cls;
+    div.textContent = text;
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+    return div;
+  }
+
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    const q = input.value.trim();
+    if (!q) return;
+
+    addMsg(q, "user");
+    input.value = "";
+    sendBtn.disabled = true;
+    const typing = addMsg("EduGenie is thinking...", "typing");
+
+    try {
+      const res = await fetch("/api/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: q, subject })
+      });
+      const data = await res.json();
+      typing.remove();
+      addMsg(data.answer || data.error, "bot");
+    } catch (err) {
+      typing.remove();
+      addMsg("⚠️ Server not reachable. Is app.py running?", "bot");
+    }
+    sendBtn.disabled = false;
+    input.focus();
+  });
+</script>
+</body>
+</html>
